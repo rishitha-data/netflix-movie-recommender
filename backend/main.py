@@ -50,22 +50,22 @@ def load_models():
     movies = pickle.load(open(movies_path, "rb"))
     similarity = pickle.load(open(similarity_path, "rb"))
 
-    # ensure dataframe
+    # FIX 1 — convert numpy array → dataframe
     if not isinstance(movies, pd.DataFrame):
         movies = pd.DataFrame(movies)
 
+    # FIX 2 — ensure title column exists
     if "title" not in movies.columns:
-        movies["title"] = movies.iloc[:, 0]
+        movies.columns = ["title"]
 
     movies["title"] = movies["title"].astype(str)
 
-    # ensure similarity matrix works
+    # FIX 3 — ensure similarity is numpy
     if isinstance(similarity, pd.DataFrame):
         similarity = similarity.values
 
     print("Models loaded successfully")
-
-
+    
 # -------- HOME --------
 @app.get("/")
 def home():
