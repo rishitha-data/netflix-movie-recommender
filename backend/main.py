@@ -105,10 +105,8 @@ app = FastAPI(
 movies = None
 similarity = None
 
-
 # ---------- BASE DIRECTORY ----------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 # ---------- LOAD DATA ----------
 @app.on_event("startup")
@@ -119,30 +117,36 @@ def load_models():
 
     movies = pd.read_csv(movies_path)
 
-    # create tags column from available text columns
+    # ensure columns exist
+    if "cast" not in movies.columns:
+        movies["cast"] = ""
+
+    if "crew" not in movies.columns:
+        movies["crew"] = ""
+
+    # create tags column using available data
     movies["tags"] = (
-        movies["overview"].fillna("").astype(str) + " " +
-        movies["genres"].fillna("").astype(str)
+        movies["cast"].fillna("").astype(str) +
+        " " +
+        movies["crew"].fillna("").astype(str)
     )
 
+    # vectorization
     cv = CountVectorizer(max_features=5000, stop_words="english")
 
-    vectors = cv.fit_transform(movies["tags"]).toarray()
+    vectors = cv.fit_transform(movies["tags"])
 
     similarity = cosine_similarity(vectors)
-
 
 # ---------- HOME ----------
 @app.get("/")
 def home():
     return {"message": "Netflix Movie Recommendation API Running"}
 
-
 # ---------- HEALTH ----------
 @app.get("/health")
 def health():
     return {"status": "API running"}
-
 
 # ---------- RECOMMEND ----------
 @app.get("/recommend/{movie}")
@@ -174,15 +178,11 @@ def recommend(movie: str, n: int = 5):
         "recommendations": recommendations
     }
 
-
 # ---------- TRENDING ----------
 @app.get("/trending")
 def trending(n: int = 10):
 
-    trending_movies = movies["title"].sample(n).tolist()
-
-    return {"movies": trending_movies}
-
+    return {"movies": movies["title"].sample(n).tolist()}
 
 # ---------- SEARCH ----------
 @app.get("/search/{query}")
