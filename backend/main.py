@@ -1,114 +1,19 @@
-# from fastapi import FastAPI, HTTPException
-# import pickle
-# import pandas as pd
-# import os
-
-# app = FastAPI(
-#     title="Netflix Movie Recommendation API",
-#     description="Movie recommendation API using content-based filtering",
-#     version="1.0.0"
-# )
-
-# similarity = None
-# movies = None
-
-
-# # ---------- GET BASE DIRECTORY ----------
-# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-# # ---------- LOAD MODELS ----------
-# @app.on_event("startup")
-# def load_models():
-#     global similarity, movies
-
-#     similarity_path = os.path.join(BASE_DIR, "models", "content_similarity.pkl")
-#     movies_path = os.path.join(BASE_DIR, "models", "movies.pkl")
-
-#     similarity = pickle.load(open(similarity_path, "rb"))
-#     movies = pickle.load(open(movies_path, "rb"))
-
-
-# # ---------- HOME ----------
-# @app.get("/")
-# def home():
-#     return {"message": "Netflix Movie Recommendation API Running"}
-
-
-# # ---------- HEALTH CHECK ----------
-# @app.get("/health")
-# def health():
-#     return {"status": "API running"}
-
-
-# # ---------- RECOMMEND ----------
-# @app.get("/recommend/{movie}")
-# def recommend(movie: str, n: int = 5):
-
-#     movie_lower = movie.lower()
-
-#     titles = movies["title"].str.lower()
-
-#     if movie_lower not in titles.values:
-#         raise HTTPException(status_code=404, detail="Movie not found")
-
-#     movie_index = movies[titles == movie_lower].index[0]
-
-#     distances = similarity[movie_index]
-
-#     movie_list = sorted(
-#         list(enumerate(distances)),
-#         key=lambda x: x[1],
-#         reverse=True
-#     )[1:n+1]
-
-#     recommendations = [
-#         movies.iloc[i[0]].title for i in movie_list
-#     ]
-
-#     return {
-#         "movie": movie,
-#         "recommendations": recommendations
-#     }
-
-
-# # ---------- TRENDING ----------
-# @app.get("/trending")
-# def trending(n: int = 10):
-
-#     trending_movies = movies["title"].sample(n).tolist()
-
-#     return {"movies": trending_movies}
-
-
-# # ---------- SEARCH ----------
-# @app.get("/search/{query}")
-# def search(query: str, n: int = 10):
-
-#     results = movies[
-#         movies["title"].str.contains(query, case=False)
-#     ]
-
-#     return {"results": results["title"].head(n).tolist()}
 from fastapi import FastAPI, HTTPException
 import pandas as pd
 import os
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-app = FastAPI(
-    title="Netflix Movie Recommendation API",
-    description="Movie recommendation API using content-based filtering",
-    version="1.0.0"
-)
+app = FastAPI()
 
 movies = None
 similarity = None
 
-# ---------- BASE DIRECTORY ----------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# -------- BASE DIRECTORY --------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ---------- LOAD DATA ----------
+
+# -------- LOAD DATA --------
 @app.on_event("startup")
 def load_models():
     global movies, similarity
@@ -117,49 +22,38 @@ def load_models():
 
     movies = pd.read_csv(movies_path)
 
-    # ensure columns exist
-    if "cast" not in movies.columns:
-        movies["cast"] = ""
+    movies["cast"] = movies.get("cast", "")
+    movies["crew"] = movies.get("crew", "")
 
-    if "crew" not in movies.columns:
-        movies["crew"] = ""
-
-    # create tags column using available data
     movies["tags"] = (
         movies["cast"].fillna("").astype(str) +
         " " +
         movies["crew"].fillna("").astype(str)
     )
 
-    # vectorization
     cv = CountVectorizer(max_features=5000, stop_words="english")
 
     vectors = cv.fit_transform(movies["tags"])
 
     similarity = cosine_similarity(vectors)
 
-# ---------- HOME ----------
+
+# -------- HOME --------
 @app.get("/")
 def home():
-    return {"message": "Netflix Movie Recommendation API Running"}
+    return {"message": "Movie Recommendation API running"}
 
-# ---------- HEALTH ----------
-@app.get("/health")
-def health():
-    return {"status": "API running"}
 
-# ---------- RECOMMEND ----------
+# -------- RECOMMEND --------
 @app.get("/recommend/{movie}")
 def recommend(movie: str, n: int = 5):
 
-    movie_lower = movie.lower()
-
     titles = movies["title"].str.lower()
 
-    if movie_lower not in titles.values:
+    if movie.lower() not in titles.values:
         raise HTTPException(status_code=404, detail="Movie not found")
 
-    movie_index = movies[titles == movie_lower].index[0]
+    movie_index = movies[titles == movie.lower()].index[0]
 
     distances = similarity[movie_index]
 
@@ -169,27 +63,23 @@ def recommend(movie: str, n: int = 5):
         reverse=True
     )[1:n+1]
 
-    recommendations = [
-        movies.iloc[i[0]].title for i in movie_list
-    ]
+    rec_movies = [movies.iloc[i[0]].title for i in movie_list]
 
-    return {
-        "movie": movie,
-        "recommendations": recommendations
-    }
+    return {"recommendations": rec_movies}
 
-# ---------- TRENDING ----------
-@app.get("/trending")
-def trending(n: int = 10):
 
-    return {"movies": movies["title"].sample(n).tolist()}
-
-# ---------- SEARCH ----------
+# -------- SEARCH --------
 @app.get("/search/{query}")
-def search(query: str, n: int = 10):
+def search(query: str):
 
     results = movies[
-        movies["title"].str.contains(query, case=False)
+        movies["title"].str.contains(query, case=False, na=False)
     ]
 
-    return {"results": results["title"].head(n).tolist()}
+    return {"results": results["title"].head(10).tolist()}
+
+
+# -------- TRENDING --------
+@app.get("/trending")
+def trending():
+    return {"movies": movies["title"].sample(10).tolist()}
