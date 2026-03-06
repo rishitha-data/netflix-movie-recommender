@@ -86,18 +86,28 @@
 from fastapi import FastAPI, HTTPException
 import pickle
 import pandas as pd
+import os
 
 app = FastAPI()
 
-movies = pickle.load(open("models/movies.pkl", "rb"))
-similarity = pickle.load(open("models/content_similarity.pkl", "rb"))
+# -------- BASE DIRECTORY --------
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# -------- LOAD MODELS --------
+movies_path = os.path.join(BASE_DIR, "models", "movies.pkl")
+similarity_path = os.path.join(BASE_DIR, "models", "content_similarity.pkl")
+
+movies = pickle.load(open(movies_path, "rb"))
+similarity = pickle.load(open(similarity_path, "rb"))
 
 
+# -------- HOME --------
 @app.get("/")
 def home():
     return {"message": "Netflix Movie Recommendation API running"}
 
 
+# -------- RECOMMEND --------
 @app.get("/recommend/{movie}")
 def recommend(movie: str, n: int = 5):
 
@@ -121,6 +131,7 @@ def recommend(movie: str, n: int = 5):
     return {"recommendations": rec_movies}
 
 
+# -------- SEARCH --------
 @app.get("/search/{query}")
 def search(query: str):
 
@@ -131,6 +142,7 @@ def search(query: str):
     return {"results": results["title"].head(10).tolist()}
 
 
+# -------- TRENDING --------
 @app.get("/trending")
 def trending():
     return {"movies": movies["title"].sample(10).tolist()}
