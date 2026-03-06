@@ -35,7 +35,6 @@ def download_models():
         )
 
 
-# -------- GLOBAL VARIABLES --------
 movies = None
 similarity = None
 
@@ -51,7 +50,18 @@ def load_models():
     movies = pickle.load(open(movies_path, "rb"))
     similarity = pickle.load(open(similarity_path, "rb"))
 
+    # ensure dataframe
+    if not isinstance(movies, pd.DataFrame):
+        movies = pd.DataFrame(movies)
+
+    if "title" not in movies.columns:
+        movies["title"] = movies.iloc[:, 0]
+
     movies["title"] = movies["title"].astype(str)
+
+    # ensure similarity matrix works
+    if isinstance(similarity, pd.DataFrame):
+        similarity = similarity.values
 
     print("Models loaded successfully")
 
@@ -66,36 +76,31 @@ def home():
 @app.get("/recommend/{movie}")
 def recommend(movie: str, n: int = 5):
 
-    try:
+    movie = movie.lower()
 
-        movie = movie.lower()
+    titles = movies["title"].str.lower()
 
-        titles = movies["title"].str.lower()
+    if movie not in titles.values:
+        raise HTTPException(status_code=404, detail="Movie not found")
 
-        if movie not in titles.values:
-            raise HTTPException(status_code=404, detail="Movie not found")
+    movie_index = movies[titles == movie].index[0]
 
-        movie_index = movies[titles == movie].index[0]
+    distances = similarity[movie_index]
 
-        distances = similarity[movie_index]
+    movie_list = sorted(
+        list(enumerate(distances)),
+        key=lambda x: x[1],
+        reverse=True
+    )[1:n+1]
 
-        movie_list = sorted(
-            list(enumerate(distances)),
-            key=lambda x: x[1],
-            reverse=True
-        )[1:n+1]
+    recommendations = [
+        movies.iloc[i[0]].title for i in movie_list
+    ]
 
-        recommendations = [
-            movies.iloc[i[0]].title for i in movie_list
-        ]
-
-        return {
-            "movie": movie,
-            "recommendations": recommendations
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "movie": movie,
+        "recommendations": recommendations
+    }
 
 
 # -------- SEARCH --------
@@ -106,9 +111,7 @@ def search(query: str):
         movies["title"].str.contains(query, case=False, na=False)
     ]
 
-    return {
-        "results": results["title"].head(10).tolist()
-    }
+    return {"results": results["title"].head(10).tolist()}
 
 
 # -------- TRENDING --------
