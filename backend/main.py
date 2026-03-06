@@ -50,15 +50,13 @@ def load_models():
     movies = pickle.load(open(movies_path, "rb"))
     similarity = pickle.load(open(similarity_path, "rb"))
 
-    import pandas as pd
-
     # convert to dataframe if needed
     if not isinstance(movies, pd.DataFrame):
         movies = pd.DataFrame(movies)
 
-    # if title column exists keep it
+    # ensure title column exists
     if "title" not in movies.columns:
-        movies["title"] = movies.iloc[:,0]
+        movies["title"] = movies.iloc[:, 0]
 
     movies["title"] = movies["title"].astype(str)
 
@@ -67,7 +65,8 @@ def load_models():
         similarity = similarity.values
 
     print("Models loaded successfully")
-    
+
+
 # -------- HOME --------
 @app.get("/")
 def home():
@@ -80,12 +79,14 @@ def recommend(movie: str, n: int = 5):
 
     movie = movie.lower()
 
-    titles = movies["title"].str.lower()
+    matched_movies = movies[
+        movies["title"].str.lower().str.contains(movie)
+    ]
 
-    if movie not in titles.values:
+    if matched_movies.empty:
         raise HTTPException(status_code=404, detail="Movie not found")
 
-    movie_index = movies[titles == movie].index[0]
+    movie_index = matched_movies.index[0]
 
     distances = similarity[movie_index]
 
@@ -100,7 +101,7 @@ def recommend(movie: str, n: int = 5):
     ]
 
     return {
-        "movie": movie,
+        "movie_found": movies.iloc[movie_index].title,
         "recommendations": recommendations
     }
 
@@ -113,7 +114,9 @@ def search(query: str):
         movies["title"].str.contains(query, case=False, na=False)
     ]
 
-    return {"results": results["title"].head(10).tolist()}
+    return {
+        "results": results["title"].head(10).tolist()
+    }
 
 
 # -------- TRENDING --------
@@ -122,4 +125,13 @@ def trending():
 
     return {
         "movies": movies["title"].sample(10).tolist()
+    }
+
+
+# -------- MOVIES LIST --------
+@app.get("/movies")
+def get_movies():
+
+    return {
+        "movies": movies["title"].head(100).tolist()
     }
