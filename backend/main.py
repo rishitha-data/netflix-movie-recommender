@@ -76,17 +76,13 @@ def home():
 @app.get("/recommend/{movie}")
 def recommend(movie: str, n: int = 5):
 
-    if movies is None:
+    import random
+
+    if similarity is None:
         raise HTTPException(status_code=500, detail="Model not loaded")
 
-    titles = movies["title"].str.lower()
-
-    matches = movies[titles.str.contains(movie.lower(), na=False)]
-
-    if matches.empty:
-        raise HTTPException(status_code=404, detail="Movie not found")
-
-    movie_index = matches.index[0]
+    # pick random movie index
+    movie_index = random.randint(0, len(similarity) - 1)
 
     distances = similarity[movie_index]
 
@@ -96,9 +92,7 @@ def recommend(movie: str, n: int = 5):
         reverse=True
     )[1:n+1]
 
-    recommendations = [
-        movies.iloc[i[0]].title for i in movie_list
-    ]
+    recommendations = [str(i[0]) for i in movie_list]
 
     return {
         "movie": movie,
