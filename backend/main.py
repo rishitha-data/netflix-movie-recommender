@@ -37,11 +37,12 @@ def download_models():
         )
 
 
-# -------- LOAD MODELS --------
+# -------- GLOBAL VARIABLES --------
 movies = None
 similarity = None
 
 
+# -------- LOAD MODELS --------
 @app.on_event("startup")
 def load_models():
 
@@ -52,7 +53,14 @@ def load_models():
     movies = pickle.load(open(movies_path, "rb"))
     similarity = pickle.load(open(similarity_path, "rb"))
 
-    movies = movies.reset_index(drop=True)
+    # Fix if movies.pkl is numpy array
+    if not isinstance(movies, pd.DataFrame):
+        movies = pd.DataFrame(movies)
+
+    # ensure title column exists
+    if "title" not in movies.columns:
+        movies.columns = ["title"]
+
     movies["title"] = movies["title"].astype(str)
 
     print("Models loaded successfully")
@@ -88,10 +96,9 @@ def recommend(movie: str, n: int = 5):
         reverse=True
     )[1:n+1]
 
-    recommendations = []
-
-    for i in movie_list:
-        recommendations.append(movies.iloc[i[0]].title)
+    recommendations = [
+        movies.iloc[i[0]].title for i in movie_list
+    ]
 
     return {
         "movie": movie,
