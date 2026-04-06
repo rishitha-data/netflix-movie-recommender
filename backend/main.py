@@ -1,142 +1,193 @@
-from fastapi import FastAPI, HTTPException
-import pickle
-import os
-import gdown
-import pandas as pd
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+import time
+import sys
 
-app = FastAPI()
+from backend.src.recommend import (
+    content_recommend,
+    search_movies,
+    trending_movies,
+    load_models
+)
+from backend.src.hybrid_model import hybrid_recommend
 
-# -------- PATHS --------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-models_dir = os.path.join(BASE_DIR, "models")
-os.makedirs(models_dir, exist_ok=True)
+from backend.logger import get_logger, log_request, log_response, log_error
+from backend.config import TOP_K
 
-movies_path = os.path.join(models_dir, "movies.pkl")
-similarity_path = os.path.join(models_dir, "content_similarity.pkl")
+# =========================================================
+# 🔥 LOGGER
+# =========================================================
+logger = get_logger(__name__)
 
+# =========================================================
+# 🔥 FIX WINDOWS ENCODING
+# =========================================================
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except:
+    pass
 
-# -------- DOWNLOAD MODELS --------
-def download_models():
+# =========================================================
+# 🔥 INIT APP
+# =========================================================
+app = FastAPI(
+    title="Movie Recommendation API",
+    version="3.0",
+    description="Industry-Level Hybrid Movie Recommendation System"
+)
 
-    # correct movies.pkl
-    if not os.path.exists(movies_path):
-        print("Downloading movies.pkl")
-        gdown.download(
-            "https://drive.google.com/uc?id=1vFvw7JG4oKX05a1deVNUO65mMYj8ndtt",
-            movies_path,
-            quiet=False
-        )
+# =========================================================
+# 🔥 GLOBAL ERROR HANDLER
+# =========================================================
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    log_error("Unhandled exception", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"}
+    )
 
-    # correct similarity.pkl
-    if not os.path.exists(similarity_path):
-        print("Downloading content_similarity.pkl")
-        gdown.download(
-            "https://drive.google.com/uc?id=19t9RKvI9D6fWek9_fdb43M62e4b9_h62",
-            similarity_path,
-            quiet=False
-        )
-
-
-movies = None
-similarity = None
-
-
-# -------- LOAD MODELS --------
+# =========================================================
+# 🔥 STARTUP (SAFE VERSION)
+# =========================================================
 @app.on_event("startup")
-def load_models():
+def startup_event():
+    try:
+        load_models()
+        logger.info("✅ Models loaded successfully")
+    except Exception as e:
+        log_error("⚠️ Models not loaded", e)
+        print("\n⚠️ Models not found. Run this first:\n")
+        print("python -m backend.src.content_model\n")
 
-    global movies, similarity
-
-    download_models()
-
-    movies = pickle.load(open(movies_path, "rb"))
-    similarity = pickle.load(open(similarity_path, "rb"))
-
-    # ensure dataframe
-    if not isinstance(movies, pd.DataFrame):
-        movies = pd.DataFrame(movies)
-
-    # ensure title column
-    if "title" not in movies.columns:
-        movies["title"] = movies.iloc[:, 0]
-
-    movies["title"] = movies["title"].astype(str)
-
-    # IMPORTANT FIX: reset index so it matches similarity matrix
-    movies = movies.reset_index(drop=True)
-
-    # ensure similarity is numpy array
-    if isinstance(similarity, pd.DataFrame):
-        similarity = similarity.values
-
-    print("Models loaded successfully")
-    
-
-# -------- HOME --------
-@app.get("/")
+# =========================================================
+# 🔥 HEALTH CHECK
+# =========================================================
+@app.get("/", tags=["Health"])
 def home():
-    return {"message": "Netflix Movie Recommendation API running"}
+    try:
+        load_models()
+        return {"status": "ok", "models": "loaded"}
+    except:
+        return {"status": "error", "models": "not loaded"}
 
+# =========================================================
+# 🔥 CONTENT-BASED
+# =========================================================
+@app.get("/recommend", tags=["Content-Based"])
+def recommend(
+    movie: str = Query(..., min_length=1),
+    n: int = Query(TOP_K, ge=1, le=50)
+):
+    start = time.time()
+    movie = movie.strip()
 
-# -------- RECOMMEND --------
-@app.get("/recommend/{movie}")
-def recommend(movie: str, n: int = 5):
+    log_request("/recommend", {"movie": movie, "n": n})
 
-    movie = movie.lower()
+    results = content_recommend(movie, n)
 
-    matched_movies = movies[
-        movies["title"].str.lower().str.contains(movie)
-    ]
+    if not results:
+        raise HTTPException(status_code=404, detail="No recommendations found")
 
-    if matched_movies.empty:
-        raise HTTPException(status_code=404, detail="Movie not found")
-
-    movie_index = matched_movies.index[0]
-
-    distances = similarity[movie_index]
-
-    movie_list = sorted(
-        list(enumerate(distances)),
-        key=lambda x: x[1],
-        reverse=True
-    )[1:n+1]
-
-    recommendations = [
-        movies.iloc[i[0]].title for i in movie_list
-    ]
+    log_response("/recommend", len(results))
 
     return {
-        "movie_found": movies.iloc[movie_index].title,
-        "recommendations": recommendations
+        "type": "content",
+        "input_movie": movie,
+        "count": len(results),
+        "latency_ms": round((time.time() - start) * 1000, 2),
+        "recommendations": results
     }
 
+# =========================================================
+# 🔥 HYBRID
+# =========================================================
+@app.get("/hybrid", tags=["Hybrid"])
+def hybrid(
+    user_id: int = Query(..., ge=1),
+    movie: str = Query(..., min_length=1),
+    n: int = Query(TOP_K, ge=1, le=50)
+):
+    start = time.time()
+    movie = movie.strip()
 
-# -------- SEARCH --------
-@app.get("/search/{query}")
-def search(query: str):
+    log_request("/hybrid", {"user_id": user_id, "movie": movie, "n": n})
 
-    results = movies[
-        movies["title"].str.contains(query, case=False, na=False)
-    ]
+    results = hybrid_recommend(user_id, movie, n)
+
+    if not results:
+        raise HTTPException(status_code=404, detail="No recommendations found")
+
+    log_response("/hybrid", len(results))
 
     return {
-        "results": results["title"].head(10).tolist()
+        "type": "hybrid",
+        "user_id": user_id,
+        "input_movie": movie,
+        "count": len(results),
+        "latency_ms": round((time.time() - start) * 1000, 2),
+        "recommendations": results
     }
 
+# =========================================================
+# 🔥 SEARCH
+# =========================================================
+@app.get("/search", tags=["Search"])
+def search(
+    query: str = Query("", min_length=0),
+    n: int = Query(10, ge=1, le=50)
+):
+    start = time.time()
+    query = query.strip()
 
-# -------- TRENDING --------
-@app.get("/trending")
-def trending():
+    log_request("/search", {"query": query, "n": n})
+
+    results = search_movies(query, n)
+
+    log_response("/search", len(results))
 
     return {
-        "movies": movies["title"].sample(10).tolist()
+        "query": query,
+        "count": len(results),
+        "latency_ms": round((time.time() - start) * 1000, 2),
+        "results": results
     }
 
+# =========================================================
+# 🔥 TRENDING
+# =========================================================
+@app.get("/trending", tags=["Discovery"])
+def trending(n: int = Query(10, ge=1, le=50)):
+    start = time.time()
 
-# -------- MOVIES LIST --------
-@app.get("/movies")
-def get_movies():
+    log_request("/trending", {"n": n})
+
+    results = trending_movies(n)
+
+    log_response("/trending", len(results))
 
     return {
-        "movies": movies["title"].head(100).tolist()
+        "count": len(results),
+        "latency_ms": round((time.time() - start) * 1000, 2),
+        "movies": results
+    }
+
+# =========================================================
+# 🔥 MOVIES LIST
+# =========================================================
+@app.get("/movies", tags=["Catalog"])
+def get_movies(n: int = Query(100, ge=1, le=500)):
+    start = time.time()
+
+    log_request("/movies", {"n": n})
+
+    movies, _, _ = load_models()
+    results = movies["title"].head(n).tolist()
+
+    log_response("/movies", len(results))
+
+    return {
+        "count": len(results),
+        "latency_ms": round((time.time() - start) * 1000, 2),
+        "movies": results
     }

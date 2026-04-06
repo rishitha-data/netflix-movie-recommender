@@ -1,4 +1,77 @@
+# ----------------------
+# Python
+# ----------------------
 __pycache__/
+*.py[cod]
+*$py.class
+
+# ----------------------
+# Virtual Environment
+# ----------------------
 venv/
 .env
+.env.*
+*.env
+
+# ----------------------
+# Models (ML artifacts)
+# ----------------------
+models/
 *.pkl
+*.index
+*.faiss
+
+# ----------------------
+# Data (keep small, ignore large)
+# ----------------------
+data/processed/
+# data/raw/   <-- keep if dataset is small
+
+# ----------------------
+# Logs
+# ----------------------
+logs/
+*.log
+
+# ----------------------
+# Databases
+# ----------------------
+*.db
+
+# ----------------------
+# IDE / Editor
+# ----------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ----------------------
+# OS files
+# ----------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------
+# Jupyter
+# ----------------------
+.ipynb_checkpoints/
+
+# ----------------------
+# Build / Distribution
+# ----------------------
+build/
+dist/
+*.egg-info/
+
+# ----------------------
+# Testing
+# ----------------------
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ----------------------
+# Streamlit
+# ----------------------
+.streamlit/secrets.toml
