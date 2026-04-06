@@ -12,7 +12,7 @@ This project delivers personalized movie recommendations by combining:
 * **Collaborative Filtering** (user behavior)
 * **Hybrid Recommendation System** (improved accuracy)
 
-It implements a complete pipeline from:
+Pipeline:
 
 ```
 Data Preprocessing → Model Training → API Development → Interactive UI
@@ -26,8 +26,8 @@ Data Preprocessing → Model Training → API Development → Interactive UI
 * 🎯 Hybrid recommendation system (Content + Collaborative)
 * ⚡ FastAPI backend for real-time predictions
 * 🎨 Streamlit frontend with Netflix-style UI
-* 📊 “Because you watched this” recommendation section
-* ⭐ Displays movie ratings, posters, and release year
+* 📊 “Because you watched this” recommendations
+* ⭐ Displays movie ratings, posters, and year
 * 🔄 Dynamic updates on user interaction
 
 ---
@@ -36,35 +36,28 @@ Data Preprocessing → Model Training → API Development → Interactive UI
 
 ### 1️⃣ Content-Based Filtering
 
-* Uses movie metadata:
-
-  * Genres
-  * Keywords
-  * Cast
-  * Overview
-* Text converted into vectors using **TF-IDF**
-* Fast similarity search using **FAISS**
+* Uses metadata: genres, keywords, cast, overview
+* TF-IDF vectorization
+* FAISS for fast similarity search
 
 ---
 
 ### 2️⃣ Collaborative Filtering
 
-* Based on user ratings (MovieLens dataset)
-* User-item interaction matrix
-* Latent feature extraction using **Truncated SVD**
+* Based on MovieLens ratings
+* User-item matrix
+* Truncated SVD
 
 ---
 
 ### 3️⃣ Hybrid Model
 
-Combines both approaches:
-
 ```
 Final Score = α × Content Score + (1 - α) × Collaborative Score
 ```
 
-* Improves recommendation quality
-* Balances similarity and personalization
+* Balances similarity + personalization
+* Improves recommendation accuracy
 
 ---
 
@@ -72,59 +65,27 @@ Final Score = α × Content Score + (1 - α) × Collaborative Score
 
 ### 📌 Sources
 
-* **TMDB 5000 Dataset** (movies metadata)
-* **MovieLens Dataset** (user ratings & interactions)
-
-These datasets are widely used in building recommendation systems in both academia and industry ([GitHub][1])
+* TMDB 5000 Dataset
+* MovieLens Dataset
 
 ---
 
-### 📊 Dataset Size
+### 📊 Size
 
-| Dataset           | Size             |
-| ----------------- | ---------------- |
-| TMDB Movies       | ~5,000 movies    |
-| MovieLens Ratings | ~100,000 ratings |
-| Tags              | ~3,000+          |
+* ~5,000 movies
+* ~100,000 ratings
+* ~3,000+ tags
 
 ---
 
-### 🧹 Data Preprocessing
+### 🧹 Preprocessing
 
-The following steps were applied:
-
-#### 🔹 Cleaning
-
-* Removed null values
-* Removed duplicate entries
-
-#### 🔹 Feature Extraction
-
-* Parsed JSON columns (genres, keywords, cast, crew)
-* Extracted:
-
-  * Top cast members
-  * Director
-
-#### 🔹 Feature Engineering
-
-* Combined features into a single **"tags" column**
-* Applied weighting:
-
-  * Genres → high importance
-  * Keywords → medium
-  * Cast/Director → contextual
-
-#### 🔹 Text Processing
-
-* Lowercasing
-* Removing special characters
-* Removing spaces in names
-* Tokenization
-
-#### 🔹 Final Output
-
-* Cleaned dataset with meaningful feature vectors for similarity search
+* Removed nulls & duplicates
+* Parsed JSON fields
+* Extracted cast & director
+* Created weighted **tags**
+* Cleaned text (lowercase, remove symbols)
+* Generated feature vectors
 
 ---
 
@@ -132,108 +93,57 @@ The following steps were applied:
 
 ```
 netflix_recommendation_system/
-│
 ├── backend/
-│   ├── src/
-│   │   ├── content_model.py
-│   │   ├── collaborative_model.py
-│   │   ├── hybrid_model.py
-│   │   ├── recommend.py
-│   │   ├── preprocess.py
-│   │   ├── evaluation.py
-│   │   ├── config.py
-│   │   └── logger.py
-│   │
-│   └── main.py
-│
 ├── frontend/
-│   └── app.py
-│
 ├── data/
-│   ├── raw/
-│   │   ├── movies.csv
-│   │   ├── ratings.csv
-│   │   ├── tags.csv
-│   │   ├── tmdb_5000_movies.csv
-│   │   └── tmdb_5000_credits.csv
-│
 ├── models/
-│   ├── user_item.pkl
-│   ├── latent_matrix.pkl
-│
-├── .env
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## ⚙️ Setup Instructions
+## ⚙️ Setup
 
-### 1. Clone Repository
-
-```
+```bash
 git clone https://github.com/rishitha-data/netflix-movie-recommender.git
 cd netflix-movie-recommender
 ```
 
----
-
-### 2. Create Virtual Environment
-
-```
+```bash
 python -m venv venv
-venv\Scripts\activate      (Windows)
-source venv/bin/activate   (Mac/Linux)
-```
-
----
-
-### 3. Install Dependencies
-
-```
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ---
 
-## 🔑 Environment Variables
-
-Create a `.env` file:
-
-```
-API_HOST=127.0.0.1
-API_PORT=8000
-API_URL=http://127.0.0.1:8000
-
-TMDB_KEY=your_tmdb_api_key
-
-TOP_K=5
-HYBRID_ALPHA=0.7
-
-LOG_LEVEL=INFO
-ENV=development
-```
-
----
-
-## ▶️ Running the Application
+## ▶️ Run
 
 ### Backend
 
-```
+```bash
 uvicorn backend.main:app --reload
 ```
 
----
-
 ### Frontend
 
-```
+```bash
 streamlit run frontend/app.py
 ```
 
 ---
+
+## 🔗 API Documentation
+
+👉 Swagger UI
+https://netflix-movie-recommender-bxv3.onrender.com/docs
+
+👉 ReDoc
+https://netflix-movie-recommender-bxv3.onrender.com/redoc
+
+> ⚠️ May take ~30–60 seconds to wake up (Render free tier)
+
 
 ## 📡 API Endpoints
 
@@ -243,17 +153,31 @@ streamlit run frontend/app.py
 GET /recommend?movie=Inception&n=5
 ```
 
-### Collaborative
-
-```
-GET /collaborative?user_id=1&n=5
-```
-
 ### Hybrid
 
 ```
 GET /hybrid?user_id=1&movie=Inception&n=10
 ```
+
+### Search
+
+```
+GET /search?query=Inception&n=10
+```
+
+### Trending
+
+```
+GET /trending?n=10
+```
+
+### Movies Catalog
+
+```
+GET /movies?n=50
+```
+
+> 📌 Uses query parameters for scalability (industry standard)
 
 ---
 
@@ -272,27 +196,27 @@ GET /hybrid?user_id=1&movie=Inception&n=10
 ]
 ```
 
+
 ## 🛠️ Tech Stack
 
 * Python
 * Pandas, NumPy
-* Scikit-learn (TF-IDF, SVD)
-* FAISS (Vector Search)
+* Scikit-learn
+* FAISS
 * FastAPI
 * Streamlit
-* TMDB API
+
 
 ## 📈 Future Improvements
 
-* Personalized recommendations based on user history
-* Explainable AI ("Because you watched X")
-* Similarity score display (e.g., 92% match)
-* Deployment using Docker / AWS
+* Personalized user history
+* Recommendation explanation
+* Similarity % score
+* Cloud deployment
 
 ## 💼 What This Project Demonstrates
 
-* Recommender Systems (ML)
-* Backend API Development
-* Frontend UI Design
-* End-to-End ML System Architecture
-
+* Recommender Systems
+* Backend API design
+* Frontend integration
+* End-to-end ML system
