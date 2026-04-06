@@ -1,4 +1,4 @@
-# 🎬 Netflix Recommender System
+# 🎬 Netflix Movie Recommender System
 
 An end-to-end **Movie Recommendation System** built using **Machine Learning, FastAPI, and Streamlit**, designed to simulate real-world recommendation engines like Netflix.
 
@@ -10,20 +10,24 @@ This project delivers personalized movie recommendations by combining:
 
 * **Content-Based Filtering** (movie similarity)
 * **Collaborative Filtering** (user behavior)
-* **Hybrid Ranking System** (improved accuracy)
+* **Hybrid Recommendation System** (improved accuracy)
 
-It implements a complete pipeline from **data preprocessing → model training → API serving → interactive UI**.
+It implements a complete pipeline from:
+
+```
+Data Preprocessing → Model Training → API Development → Interactive UI
+```
 
 ---
 
 ## ✨ Key Features
 
-* 🔍 Search and select movies
+* 🔍 Search and select any movie
 * 🎯 Hybrid recommendation system (Content + Collaborative)
 * ⚡ FastAPI backend for real-time predictions
 * 🎨 Streamlit frontend with Netflix-style UI
-* 📊 “Because you watched this” recommendations
-* ⭐ Displays ratings, posters, and release year
+* 📊 “Because you watched this” recommendation section
+* ⭐ Displays movie ratings, posters, and release year
 * 🔄 Dynamic updates on user interaction
 
 ---
@@ -32,17 +36,22 @@ It implements a complete pipeline from **data preprocessing → model training �
 
 ### 1️⃣ Content-Based Filtering
 
-* Uses movie metadata (genres, keywords, cast, overview)
+* Uses movie metadata:
+
+  * Genres
+  * Keywords
+  * Cast
+  * Overview
 * Text converted into vectors using **TF-IDF**
-* Similarity search powered by **FAISS (Facebook AI Similarity Search)**
+* Fast similarity search using **FAISS**
 
 ---
 
 ### 2️⃣ Collaborative Filtering
 
-* Based on user-item interactions (ratings)
-* Builds user-item matrix
-* Learns latent features using **Truncated SVD**
+* Based on user ratings (MovieLens dataset)
+* User-item interaction matrix
+* Latent feature extraction using **Truncated SVD**
 
 ---
 
@@ -55,51 +64,67 @@ Final Score = α × Content Score + (1 - α) × Collaborative Score
 ```
 
 * Improves recommendation quality
-* Balances personalization and similarity
+* Balances similarity and personalization
 
 ---
 
 ## 📂 Dataset
 
-### 📌 Source
+### 📌 Sources
 
-* **TMDB 5000 Dataset**
-* **MovieLens Dataset (100K / Latest small)**
+* **TMDB 5000 Dataset** (movies metadata)
+* **MovieLens Dataset** (user ratings & interactions)
+
+These datasets are widely used in building recommendation systems in both academia and industry ([GitHub][1])
 
 ---
 
 ### 📊 Dataset Size
 
-| Dataset           | Approx Size      |
+| Dataset           | Size             |
 | ----------------- | ---------------- |
 | TMDB Movies       | ~5,000 movies    |
 | MovieLens Ratings | ~100,000 ratings |
-| Tags              | ~3,000+ entries  |
+| Tags              | ~3,000+          |
 
 ---
 
-### 🧹 Preprocessing Steps
+### 🧹 Data Preprocessing
 
-The following steps are applied before training:
+The following steps were applied:
 
-* Removed null values and duplicates
-* Parsed JSON fields (genres, keywords, cast, crew)
+#### 🔹 Cleaning
+
+* Removed null values
+* Removed duplicate entries
+
+#### 🔹 Feature Extraction
+
+* Parsed JSON columns (genres, keywords, cast, crew)
 * Extracted:
 
   * Top cast members
-  * Director information
+  * Director
+
+#### 🔹 Feature Engineering
+
 * Combined features into a single **"tags" column**
-* Applied text cleaning:
+* Applied weighting:
 
-  * Lowercasing
-  * Removing special characters
-  * Removing spaces between words
-* Weighted important features:
+  * Genres → high importance
+  * Keywords → medium
+  * Cast/Director → contextual
 
-  * Genres (higher weight)
-  * Keywords
-  * Cast & Director
-* Generated final feature vector for each movie
+#### 🔹 Text Processing
+
+* Lowercasing
+* Removing special characters
+* Removing spaces in names
+* Tokenization
+
+#### 🔹 Final Output
+
+* Cleaned dataset with meaningful feature vectors for similarity search
 
 ---
 
@@ -148,8 +173,8 @@ netflix_recommendation_system/
 ### 1. Clone Repository
 
 ```
-git clone https://github.com/your-username/netflix-recommender.git
-cd netflix-recommender
+git clone https://github.com/rishitha-data/netflix-movie-recommender.git
+cd netflix-movie-recommender
 ```
 
 ---
@@ -172,7 +197,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🔑 Environment Configuration
+## 🔑 Environment Variables
 
 Create a `.env` file:
 
@@ -194,7 +219,7 @@ ENV=development
 
 ## ▶️ Running the Application
 
-### Start Backend
+### Backend
 
 ```
 uvicorn backend.main:app --reload
@@ -202,7 +227,7 @@ uvicorn backend.main:app --reload
 
 ---
 
-### Start Frontend
+### Frontend
 
 ```
 streamlit run frontend/app.py
@@ -212,19 +237,19 @@ streamlit run frontend/app.py
 
 ## 📡 API Endpoints
 
-### 🔹 Content-Based Recommendation
+### Content-Based
 
 ```
 GET /recommend?movie=Inception&n=5
 ```
 
-### 🔹 Collaborative Recommendation
+### Collaborative
 
 ```
 GET /collaborative?user_id=1&n=5
 ```
 
-### 🔹 Hybrid Recommendation
+### Hybrid
 
 ```
 GET /hybrid?user_id=1&movie=Inception&n=10
@@ -232,7 +257,7 @@ GET /hybrid?user_id=1&movie=Inception&n=10
 
 ---
 
-## 📊 Sample Output
+## 📊 Example Output
 
 ```json
 [
@@ -245,6 +270,7 @@ GET /hybrid?user_id=1&movie=Inception&n=10
     "score": 0.89
   }
 ]
+```
 
 ## 🛠️ Tech Stack
 
@@ -252,23 +278,21 @@ GET /hybrid?user_id=1&movie=Inception&n=10
 * Pandas, NumPy
 * Scikit-learn (TF-IDF, SVD)
 * FAISS (Vector Search)
-* FastAPI (Backend)
-* Streamlit (Frontend)
-* TMDB API (Posters & Metadata)
+* FastAPI
+* Streamlit
+* TMDB API
 
 ## 📈 Future Improvements
 
 * Personalized recommendations based on user history
-* Explainable recommendations ("Because you watched X")
+* Explainable AI ("Because you watched X")
 * Similarity score display (e.g., 92% match)
-* Genre-based filtering
 * Deployment using Docker / AWS
 
-## 💼 Use Case
+## 💼 What This Project Demonstrates
 
-This project demonstrates:
+* Recommender Systems (ML)
+* Backend API Development
+* Frontend UI Design
+* End-to-End ML System Architecture
 
-* Recommender Systems (Machine Learning)
-* Backend API development
-* Frontend UI integration
-* End-to-end ML system design
