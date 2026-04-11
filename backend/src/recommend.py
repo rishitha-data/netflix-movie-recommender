@@ -9,8 +9,8 @@ import re
 # =========================================================
 # PATH (FIXED)
 # =========================================================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-models_dir = os.path.join(BASE_DIR, "models")   # ✅ FIXED
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+models_dir = os.path.join(BASE_DIR, "models")
 
 movies_path = os.path.join(models_dir, "movies.pkl")
 index_path = os.path.join(models_dir, "faiss.index")
@@ -24,7 +24,7 @@ vectors_path = os.path.join(models_dir, "vectors.npy")
 def load_models():
     movies = pickle.load(open(movies_path, "rb"))
     index = faiss.read_index(index_path)
-    vectors = np.load(vectors_path)
+    vectors = np.load(vectors_path, mmap_mode='r')
 
     movies = pd.DataFrame(movies)
     movies["title"] = movies["title"].astype(str)
